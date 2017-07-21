@@ -716,17 +716,13 @@ class PackageFinder(object):
                     logger.warning("Can't determine dates for %s, will "
                                    "consider version anyway", link)
                 else:
-                    release = resp.json()["releases"][version]
-                    if not release:
-                        logger.debug('Got empty release, skipping version')
-                        return
-
                     import dateutil.parser
 
-                    # Find exact filename
-                    for upload in release:
+                    releases = six.itervalues(resp.json()["releases"])
+                    for upload in itertools.chain.from_iterable(releases):
                         if upload["filename"] == link.filename:
-                            time = dateutil.parser.parse(upload["upload_time"])
+                            time = dateutil.parser.parse(
+                                upload["upload_time"])
                             logger.debug('Found date for file: %s',
                                          time.strftime("%Y-%m-%d %H:%M:%S"))
                             if time > self._date_limit:
@@ -734,16 +730,6 @@ class PackageFinder(object):
                                     link, 'File is too recent')
                                 return
                             break
-                    else:
-                        # No exact match, use release date
-                        time = min(dateutil.parser.parse(upload["upload_time"])
-                                   for upload in release)
-                        logger.debug("Didn't find file, using release date: "
-                                     "%s", time.strftime("%Y-%m-%d %H:%M:%S"))
-                        if time > self._date_limit:
-                            self._log_skipped_link(
-                                link, 'Release is too recent')
-                            return
 
         return InstallationCandidate(search.supplied, version, link)
 
