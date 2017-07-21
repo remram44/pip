@@ -342,6 +342,11 @@ class RequirementCommand(Command):
             logger.debug('Ignoring indexes: %s', ','.join(index_urls))
             index_urls = []
 
+        date_limit = None
+        if options.date_limit is not None:
+            import dateutil.parser
+            date_limit = dateutil.parser.parse(options.date_limit)
+
         return PackageFinder(
             find_links=options.find_links,
             format_control=options.format_control,
@@ -354,4 +359,5 @@ class RequirementCommand(Command):
             versions=python_versions,
             abi=abi,
             implementation=implementation,
+            date_limit=date_limit,
         )

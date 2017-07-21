@@ -108,7 +108,8 @@ class PackageFinder(object):
     def __init__(self, find_links, index_urls, allow_all_prereleases=False,
                  trusted_hosts=None, process_dependency_links=False,
                  session=None, format_control=None, platform=None,
-                 versions=None, abi=None, implementation=None):
+                 versions=None, abi=None, implementation=None,
+                 date_limit=None):
         """Create a PackageFinder.
 
         :param format_control: A FormatControl object or None. Used to control
@@ -125,6 +126,7 @@ class PackageFinder(object):
             to pep425tags.py in the get_supported() method.
         :param implementation: A string or None. This is passed directly
             to pep425tags.py in the get_supported() method.
+        :param date_limit: A datetime or None.
         """
         if session is None:
             raise TypeError(
@@ -175,6 +177,8 @@ class PackageFinder(object):
             abi=abi,
             impl=implementation,
         )
+
+        self._date_limit = date_limit
 
         # If we don't have TLS enabled, then WARN if anyplace we're looking
         # relies on TLS.
@@ -688,6 +692,58 @@ class PackageFinder(object):
                          link, link.requires_python)
             return
         logger.debug('Found link %s, version: %s', link, version)
+
+        if self._date_limit is not None:
+            logger.debug('Checking release date for %s', link)
+            url = urllib_parse.urlparse(link.comes_from.url)
+            try:
+                sep = url.path.rindex('/', 0, -1)
+                sep = url.path.rindex('/', 0, sep)
+            except ValueError:
+                logger.warning("Can't determine dates for %s, will "
+                               "consider version anyway", link)
+            else:
+                path = '%s/pypi/%s/json' % (url.path[:sep], search.canonical)
+                url = urllib_parse.ParseResult(url.scheme, url.netloc, path,
+                                               '', '', '').geturl()
+                resp = self.session.get(
+                    url,
+                    headers={"Accept": "application/json",
+                             "Cache-Control": "max-age=600",
+                    },
+                )
+                if resp.status_code != 200:
+                    logger.warning("Can't determine dates for %s, will "
+                                   "consider version anyway", link)
+                else:
+                    release = resp.json()["releases"][version]
+                    if not release:
+                        logger.debug('Got empty release, skipping version')
+                        return
+
+                    import dateutil.parser
+
+                    # Find exact filename
+                    for upload in release:
+                        if upload["filename"] == link.filename:
+                            time = dateutil.parser.parse(upload["upload_time"])
+                            logger.debug('Found date for file: %s',
+                                         time.strftime("%Y-%m-%d %H:%M:%S"))
+                            if time > self._date_limit:
+                                self._log_skipped_link(
+                                    link, 'File is too recent')
+                                return
+                            break
+                    else:
+                        # No exact match, use release date
+                        time = min(dateutil.parser.parse(upload["upload_time"])
+                                   for upload in release)
+                        logger.debug("Didn't find file, using release date: "
+                                     "%s", time.strftime("%Y-%m-%d %H:%M:%S"))
+                        if time > self._date_limit:
+                            self._log_skipped_link(
+                                link, 'Release is too recent')
+                            return
 
         return InstallationCandidate(search.supplied, version, link)
 
