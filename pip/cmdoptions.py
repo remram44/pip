@@ -289,6 +289,18 @@ def constraints():
         'This option can be used multiple times.')
 
 
+def date_limit():
+    return Option(
+        '--date-limit',
+        dest='date_limit',
+        action='store',
+        default=None,
+        metavar='date',
+        help='Only consider package versions published up to this date. '
+        'This option lets you install packages as they would have been at a '
+        'specific point in time.')
+
+
 def requirements():
     return Option(
         '-r', '--requirement',

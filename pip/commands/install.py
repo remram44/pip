@@ -67,6 +67,7 @@ class InstallCommand(RequirementCommand):
 
         cmd_opts.add_option(cmdoptions.requirements())
         cmd_opts.add_option(cmdoptions.constraints())
+        cmd_opts.add_option(cmdoptions.date_limit())
         cmd_opts.add_option(cmdoptions.no_deps())
         cmd_opts.add_option(cmdoptions.pre())
 

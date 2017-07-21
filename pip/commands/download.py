@@ -47,6 +47,7 @@ class DownloadCommand(RequirementCommand):
 
         cmd_opts.add_option(cmdoptions.constraints())
         cmd_opts.add_option(cmdoptions.requirements())
+        cmd_opts.add_option(cmdoptions.date_limit())
         cmd_opts.add_option(cmdoptions.build_dir())
         cmd_opts.add_option(cmdoptions.no_deps())
         cmd_opts.add_option(cmdoptions.global_options())
